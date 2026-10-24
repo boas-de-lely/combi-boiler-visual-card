@@ -1,0 +1,32 @@
+{
+  "name": "combi-boiler-visual-card",
+  "version": "1.0.0",
+  "description": "Animated combi boiler schematic card for Home Assistant.",
+  "type": "module",
+  "main": "dist/combi-boiler-visual-card.js",
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "home-assistant",
+    "hacs",
+    "lovelace",
+    "custom-card",
+    "boiler",
+    "heating"
+  ],
+  "author": "Boas de Lely",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boas-de-lely/combi-boiler-visual-card.git"
+  },
+  "bugs": {
+    "url": "https://github.com/boas-de-lely/combi-boiler-visual-card/issues"
+  },
+  "homepage": "https://github.com/boas-de-lely/combi-boiler-visual-card#readme",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node --check src/combi-boiler-visual-card.js"
+  }
+}
