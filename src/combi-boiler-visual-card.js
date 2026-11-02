@@ -8,7 +8,7 @@
 
 const CARD_TAG = 'combi-boiler-visual-card';
 const CARD_NAME = 'Combi Boiler Visual Card';
-const CARD_VERSION = '1.0.0';
+const CARD_VERSION = '1.2.0';
 const CARD_REPO = 'https://github.com/boas-de-lely/combi-boiler-visual-card';
 const CARD_DESCRIPTION =
   'Animated combi boiler schematic with live temperatures, flows, pressure and burner states.';
