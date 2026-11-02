@@ -14,6 +14,8 @@ const CARD_DESCRIPTION =
   'Animated combi boiler schematic with live temperatures, flows, pressure and burner states.';
 
 const DASH = '—';
+const DEFAULT_BOILER_BRAND = 'NEFIT';
+const DEFAULT_BOILER_MODEL = 'TRENDLINE II';
 
 const DEFAULT_ENTITIES = {
   flow_temperature: 'sensor.boiler_current_flow_temperature',
@@ -51,29 +53,11 @@ const ENTITY_LABELS = {
   fan: 'Fan',
 };
 
-const EDITOR_SCHEMA = [
-  ...Object.keys(DEFAULT_ENTITIES).map((key) => ({
-    name: key,
-    selector: {
-      entity: {
-        domain: key === 'gas' || key.endsWith('_active') || key.endsWith('_pump') || key === 'fan'
-          ? 'binary_sensor'
-          : 'sensor',
-      },
-    },
-  })),
-  {
-    name: 'show_delta_temperature',
-    selector: { boolean: {} },
-  },
-  {
-    name: 'tap_flow_threshold',
-    selector: { number: { min: 0, max: 100, step: 0.01, mode: 'box' } },
-  },
-];
-
 const EDITOR_LABELS = {
   ...ENTITY_LABELS,
+  entities: 'Sensor entities',
+  boiler_brand: 'Boiler brand',
+  boiler_model: 'Boiler model',
   show_delta_temperature: 'Show flow/return temperature difference (ΔT)',
   tap_flow_threshold: 'Tap flow threshold',
 };
@@ -215,8 +199,8 @@ const CARD_SVG = `<svg viewBox="10 30 345 510" preserveAspectRatio="xMidYMid mee
         <path d="m92.93,56.37l188,0" stroke="#e0e6ed" stroke-width="2" id="svg_16"/>
 
         <!-- Boiler branding. -->
-        <text x="180" y="94" text-anchor="middle" fill="#26374b" font-size="13" font-weight="750" id="svg_17" transform="matrix(1, 0, 0, 1, 5.67178, -21.3033)">NEFIT</text>
-        <text x="180" y="108" text-anchor="middle" fill="#65758a" font-size="9" id="svg_18" transform="matrix(1, 0, 0, 1, 7.76383, -23.8137)">TRENDLINE II</text>
+        <text x="180" y="94" text-anchor="middle" fill="#26374b" font-size="13" font-weight="750" id="boiler-brand" transform="matrix(1, 0, 0, 1, 5.67178, -21.3033)">NEFIT</text>
+        <text x="180" y="108" text-anchor="middle" fill="#65758a" font-size="9" id="boiler-model" transform="matrix(1, 0, 0, 1, 7.76383, -23.8137)">TRENDLINE II</text>
 
         <!-- Radiator body and individual radiator panels. -->
         <rect x="56.05" y="459.43" width="110" height="65" rx="5" fill="#ffffff" stroke="#adadad" stroke-width="1.5" id="svg_31"/>
@@ -615,11 +599,61 @@ class CombiBoilerVisualCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return {};
+    return {
+      entities: { ...DEFAULT_ENTITIES },
+      boiler_brand: DEFAULT_BOILER_BRAND,
+      boiler_model: DEFAULT_BOILER_MODEL,
+      show_delta_temperature: true,
+      tap_flow_threshold: 0.05,
+    };
   }
 
-  static getConfigElement() {
-    return document.createElement(`${CARD_TAG}-editor`);
+  static getConfigForm() {
+    return {
+      schema: [
+        {
+          type: 'grid',
+          name: 'entities',
+          column_min_width: '250px',
+          schema: Object.keys(DEFAULT_ENTITIES).map((key) => ({
+            name: key,
+            default: DEFAULT_ENTITIES[key],
+            selector: {
+              entity: {
+                domain:
+                  key === 'gas' ||
+                  key.endsWith('_active') ||
+                  key.endsWith('_pump') ||
+                  key === 'fan'
+                    ? 'binary_sensor'
+                    : 'sensor',
+              },
+            },
+          })),
+        },
+        {
+          name: 'boiler_brand',
+          default: DEFAULT_BOILER_BRAND,
+          selector: { text: {} },
+        },
+        {
+          name: 'boiler_model',
+          default: DEFAULT_BOILER_MODEL,
+          selector: { text: {} },
+        },
+        {
+          name: 'show_delta_temperature',
+          default: true,
+          selector: { boolean: {} },
+        },
+        {
+          name: 'tap_flow_threshold',
+          default: 0.05,
+          selector: { number: { min: 0, max: 100, step: 0.01, mode: 'box' } },
+        },
+      ],
+      computeLabel: (schema) => EDITOR_LABELS[schema.name] || schema.name,
+    };
   }
 
   setConfig(config) {
@@ -644,6 +678,10 @@ class CombiBoilerVisualCard extends HTMLElement {
       entities: { ...DEFAULT_ENTITIES, ...overrides },
       tapFlowThreshold: Number.isFinite(threshold) ? threshold : 0.05,
       showDeltaTemperature: config.show_delta_temperature !== false,
+      boilerBrand:
+        typeof config.boiler_brand === 'string' ? config.boiler_brand : DEFAULT_BOILER_BRAND,
+      boilerModel:
+        typeof config.boiler_model === 'string' ? config.boiler_model : DEFAULT_BOILER_MODEL,
     };
 
     if (!this._els) this._build();
@@ -672,6 +710,8 @@ class CombiBoilerVisualCard extends HTMLElement {
     this._els = {
       glow: find('#radiator-glow'),
       deltaTemperature: find('#delta-temperature'),
+      boilerBrand: find('#boiler-brand'),
+      boilerModel: find('#boiler-model'),
       burner: find('#burner'),
       flame: find('#flame'),
       pump: find('#pump-housing'),
@@ -725,6 +765,9 @@ class CombiBoilerVisualCard extends HTMLElement {
     const hass = this._hass;
     const entities = this._config.entities;
     const els = this._els;
+
+    setText(els.boilerBrand, this._config.boilerBrand);
+    setText(els.boilerModel, this._config.boilerModel);
 
     const stateOf = (key) => hass.states[entities[key]];
     const isOn = (key) => stateOf(key)?.state === 'on';
@@ -804,78 +847,6 @@ class CombiBoilerVisualCard extends HTMLElement {
     }
     setClass(els.flows.dhwCold, 'is-off', !dhwFlowOn);
   }
-}
-
-class CombiBoilerVisualCardEditor extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this._config = {};
-    this._hass = undefined;
-    this._form = undefined;
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-    this._updateForm();
-  }
-
-  setConfig(config) {
-    this._config = config || {};
-    this._updateForm();
-  }
-
-  _updateForm() {
-    if (!this._form) {
-      const form = document.createElement('ha-form');
-      form.addEventListener('value-changed', (event) => this._valueChanged(event));
-      this.shadowRoot.append(form);
-      this._form = form;
-    }
-
-    const formData = {
-      ...DEFAULT_ENTITIES,
-      ...this._config.entities,
-      show_delta_temperature: this._config.show_delta_temperature !== false,
-      tap_flow_threshold: Number.isFinite(Number(this._config.tap_flow_threshold))
-        ? Number(this._config.tap_flow_threshold)
-        : 0.05,
-    };
-
-    this._form.hass = this._hass;
-    this._form.data = formData;
-    this._form.schema = EDITOR_SCHEMA;
-    this._form.computeLabel = (schema) => EDITOR_LABELS[schema.name] || schema.name;
-  }
-
-  _valueChanged(event) {
-    const values = event.detail.value;
-    const entities = {};
-    for (const key of Object.keys(DEFAULT_ENTITIES)) {
-      if (typeof values[key] === 'string' && values[key]) entities[key] = values[key];
-    }
-
-    const threshold = Number(values.tap_flow_threshold);
-    const config = {
-      ...this._config,
-      entities,
-      show_delta_temperature: values.show_delta_temperature !== false,
-      tap_flow_threshold: Number.isFinite(threshold) ? threshold : 0.05,
-    };
-
-    this._config = config;
-    this.dispatchEvent(
-      new CustomEvent('config-changed', {
-        detail: { config },
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-}
-
-if (!customElements.get(`${CARD_TAG}-editor`)) {
-  customElements.define(`${CARD_TAG}-editor`, CombiBoilerVisualCardEditor);
 }
 
 if (!customElements.get(CARD_TAG)) {

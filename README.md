@@ -20,6 +20,7 @@ custom element, so `button-card` is no longer required.
 - Everything is configurable — point the card at your own entities.
 - Use the visual card editor to choose entities and adjust display options without
   editing YAML.
+- Change the boiler brand and model text in the visual editor or YAML.
 - Optionally hide the flow/return temperature difference (ΔT) badge.
 - Click a value badge to open the normal Home Assistant more-info dialog.
 - Honours `prefers-reduced-motion`.
@@ -52,6 +53,8 @@ custom element, so `button-card` is no longer required.
 
 ```yaml
 type: custom:combi-boiler-visual-card
+boiler_brand: NEFIT
+boiler_model: TRENDLINE II
 entities:
   flow_temperature: sensor.boiler_current_flow_temperature
   return_temperature: sensor.boiler_return_temperature
@@ -74,8 +77,9 @@ show_delta_temperature: true
 
 `type` is the only required option. Every entity key is optional and falls back to the
 defaults shown below, so you only need to list the ones that differ.
-You can select entities and configure the options in Home Assistant's visual card editor,
-or edit them directly in YAML.
+Use the card's visual editor to select sensors in the **Sensor entities** grid. In YAML,
+set any sensors you want to override under `entities`; you can also change the boiler
+brand and model text.
 
 | Key | Default | Description |
 | --- | --- | --- |
@@ -97,6 +101,8 @@ or edit them directly in YAML.
 
 | Option | Default | Description |
 | --- | --- | --- |
+| `boiler_brand` | `NEFIT` | Brand text shown on the boiler |
+| `boiler_model` | `TRENDLINE II` | Model text shown below the brand |
 | `tap_flow_threshold` | `0.05` | Flow rate (in the sensor's unit) above which the tap is considered open |
 | `show_delta_temperature` | `true` | Show the flow/return temperature difference badge |
 
@@ -104,6 +110,8 @@ or edit them directly in YAML.
 
 ```yaml
 type: custom:combi-boiler-visual-card
+boiler_brand: My brand
+boiler_model: My boiler
 entities:
   flow_temperature: sensor.my_boiler_flow
   return_temperature: sensor.my_boiler_return
