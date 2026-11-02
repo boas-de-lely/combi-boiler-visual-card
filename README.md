@@ -18,6 +18,9 @@ custom element, so `button-card` is no longer required.
 - Animated pipe flow, spinning pump and fan, glowing radiator and coloured burner,
   all driven by the actual sensor states.
 - Everything is configurable — point the card at your own entities.
+- Use the visual card editor to choose entities and adjust display options without
+  editing YAML.
+- Optionally hide the flow/return temperature difference (ΔT) badge.
 - Click a value badge to open the normal Home Assistant more-info dialog.
 - Honours `prefers-reduced-motion`.
 - No external dependencies, no build step needed at runtime.
@@ -66,10 +69,13 @@ entities:
   dhw_pump: binary_sensor.boiler_dhw_charge_pump
   fan: binary_sensor.boiler_fan
 tap_flow_threshold: 0.05
+show_delta_temperature: true
 ```
 
 `type` is the only required option. Every entity key is optional and falls back to the
 defaults shown below, so you only need to list the ones that differ.
+You can select entities and configure the options in Home Assistant's visual card editor,
+or edit them directly in YAML.
 
 | Key | Default | Description |
 | --- | --- | --- |
@@ -92,6 +98,7 @@ defaults shown below, so you only need to list the ones that differ.
 | Option | Default | Description |
 | --- | --- | --- |
 | `tap_flow_threshold` | `0.05` | Flow rate (in the sensor's unit) above which the tap is considered open |
+| `show_delta_temperature` | `true` | Show the flow/return temperature difference badge |
 
 ### Minimal example
 

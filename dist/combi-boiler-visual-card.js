@@ -42,6 +42,51 @@ const DEFAULT_ENTITIES = {
   fan: 'binary_sensor.boiler_fan',
 };
 
+const ENTITY_LABELS = {
+  flow_temperature: 'Flow temperature',
+  return_temperature: 'Return temperature',
+  system_pressure: 'System pressure',
+  dhw_temperature: 'DHW temperature',
+  dhw_flow: 'DHW flow',
+  water_flow: 'Water meter flow',
+  pump_modulation: 'Pump modulation',
+  burner_power: 'Burner power',
+  gas: 'Gas valve',
+  flame_current: 'Flame current',
+  heating_active: 'Heating active',
+  heating_pump: 'Heating pump',
+  dhw_active: 'DHW active',
+  dhw_pump: 'DHW pump',
+  fan: 'Fan',
+};
+
+const EDITOR_SCHEMA = [
+  ...Object.keys(DEFAULT_ENTITIES).map((key) => ({
+    name: key,
+    selector: {
+      entity: {
+        domain: key === 'gas' || key.endsWith('_active') || key.endsWith('_pump') || key === 'fan'
+          ? 'binary_sensor'
+          : 'sensor',
+      },
+    },
+  })),
+  {
+    name: 'show_delta_temperature',
+    selector: { boolean: {} },
+  },
+  {
+    name: 'tap_flow_threshold',
+    selector: { number: { min: 0, max: 100, step: 0.01, mode: 'box' } },
+  },
+];
+
+const EDITOR_LABELS = {
+  ...ENTITY_LABELS,
+  show_delta_temperature: 'Show flow/return temperature difference (ΔT)',
+  tap_flow_threshold: 'Tap flow threshold',
+};
+
 const CARD_CSS = `
   :host {
     display: block;
@@ -470,10 +515,12 @@ const CARD_SVG = `<svg viewBox="10 30 345 510" preserveAspectRatio="xMidYMid mee
         <text x="128" y="320" class="value" text-anchor="middle" id="ch-return-temperature">—</text>
 
         <!-- Temperature difference between flow and return. -->
-        <rect x="103.96" y="288.59" width="47.67" height="14.7" rx="6" fill="#424242" stroke="#262626" stroke-width="1.2" id="svg_97" opacity="0.75"/>
-        <text x="128" y="299" class="value" text-anchor="middle" id="ch-delta-temperature">△ —</text>
-        <line fill="none" stroke="#000000" stroke-width="1.5" x1="127.93" y1="283.38" x2="127.93" y2="288.28" id="svg_99"/>
-        <line fill="none" stroke="#000000" stroke-width="1.5" x1="127.9" y1="303.82" x2="127.9" y2="309.12" id="svg_100"/>
+        <g id="delta-temperature">
+         <rect x="103.96" y="288.59" width="47.67" height="14.7" rx="6" fill="#424242" stroke="#262626" stroke-width="1.2" id="svg_97" opacity="0.75"/>
+         <text x="128" y="299" class="value" text-anchor="middle" id="ch-delta-temperature">△ —</text>
+         <line fill="none" stroke="#000000" stroke-width="1.5" x1="127.93" y1="283.38" x2="127.93" y2="288.28" id="svg_99"/>
+         <line fill="none" stroke="#000000" stroke-width="1.5" x1="127.9" y1="303.82" x2="127.9" y2="309.12" id="svg_100"/>
+        </g>
 
         <!-- Domestic hot water temperature value. -->
         <rect x="256.19" y="247.04" width="35.97" height="14.7" rx="6" fill="#424242" stroke="#262626" stroke-width="1.2" id="svg_102" opacity="0.75"/>
@@ -580,6 +627,10 @@ class CombiBoilerVisualCard extends HTMLElement {
     return {};
   }
 
+  static getConfigElement() {
+    return document.createElement(`${CARD_TAG}-editor`);
+  }
+
   setConfig(config) {
     if (!config || typeof config !== 'object') {
       throw new Error(`${CARD_NAME}: configuration is required`);
@@ -601,6 +652,7 @@ class CombiBoilerVisualCard extends HTMLElement {
     this._config = {
       entities: { ...DEFAULT_ENTITIES, ...overrides },
       tapFlowThreshold: Number.isFinite(threshold) ? threshold : 0.05,
+      showDeltaTemperature: config.show_delta_temperature !== false,
     };
 
     if (!this._els) this._build();
@@ -628,6 +680,7 @@ class CombiBoilerVisualCard extends HTMLElement {
 
     this._els = {
       glow: find('#radiator-glow'),
+      deltaTemperature: find('#delta-temperature'),
       burner: find('#burner'),
       flame: find('#flame'),
       pump: find('#pump-housing'),
@@ -727,6 +780,7 @@ class CombiBoilerVisualCard extends HTMLElement {
     setText(els.labels.flowTemperature, temperature('flow_temperature'));
     setText(els.labels.returnTemperature, temperature('return_temperature'));
     setText(els.labels.deltaTemperature, `△ ${delta}`);
+    setClass(els.deltaTemperature, 'is-off', !this._config.showDeltaTemperature);
     setText(els.labels.dhwTemperature, temperature('dhw_temperature'));
     setText(els.labels.dhwFlow, measured('dhw_flow', 1));
     setText(els.labels.waterFlow, measured('water_flow', 1));
@@ -759,6 +813,78 @@ class CombiBoilerVisualCard extends HTMLElement {
     }
     setClass(els.flows.dhwCold, 'is-off', !dhwFlowOn);
   }
+}
+
+class CombiBoilerVisualCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._config = {};
+    this._hass = undefined;
+    this._form = undefined;
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._updateForm();
+  }
+
+  setConfig(config) {
+    this._config = config || {};
+    this._updateForm();
+  }
+
+  _updateForm() {
+    if (!this._form) {
+      const form = document.createElement('ha-form');
+      form.addEventListener('value-changed', (event) => this._valueChanged(event));
+      this.shadowRoot.append(form);
+      this._form = form;
+    }
+
+    const formData = {
+      ...DEFAULT_ENTITIES,
+      ...this._config.entities,
+      show_delta_temperature: this._config.show_delta_temperature !== false,
+      tap_flow_threshold: Number.isFinite(Number(this._config.tap_flow_threshold))
+        ? Number(this._config.tap_flow_threshold)
+        : 0.05,
+    };
+
+    this._form.hass = this._hass;
+    this._form.data = formData;
+    this._form.schema = EDITOR_SCHEMA;
+    this._form.computeLabel = (schema) => EDITOR_LABELS[schema.name] || schema.name;
+  }
+
+  _valueChanged(event) {
+    const values = event.detail.value;
+    const entities = {};
+    for (const key of Object.keys(DEFAULT_ENTITIES)) {
+      if (typeof values[key] === 'string' && values[key]) entities[key] = values[key];
+    }
+
+    const threshold = Number(values.tap_flow_threshold);
+    const config = {
+      ...this._config,
+      entities,
+      show_delta_temperature: values.show_delta_temperature !== false,
+      tap_flow_threshold: Number.isFinite(threshold) ? threshold : 0.05,
+    };
+
+    this._config = config;
+    this.dispatchEvent(
+      new CustomEvent('config-changed', {
+        detail: { config },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+}
+
+if (!customElements.get(`${CARD_TAG}-editor`)) {
+  customElements.define(`${CARD_TAG}-editor`, CombiBoilerVisualCardEditor);
 }
 
 if (!customElements.get(CARD_TAG)) {

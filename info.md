@@ -7,7 +7,9 @@ pump modulation and burner power.
 ![Combi Boiler Visual Card](docs/screenshot.png)
 
 - Animated pipe flow, spinning pump and fan, glowing radiator and coloured burner.
-- All entities are configurable, unused ones fall back to sensible defaults.
+- Choose entities in the visual card editor or configure them in YAML; unused entities
+  fall back to sensible defaults.
+- The ΔT badge can be hidden in the editor or with `show_delta_temperature: false`.
 - Tap a value badge to open the more-info dialog.
 - No dependencies, no `button-card` required.
 
