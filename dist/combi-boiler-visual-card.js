@@ -1,5 +1,5 @@
 /**
- * Combi Boiler Visual Card v1.2.0
+ * Combi Boiler Visual Card v1.2.1
  * Animated combi boiler schematic card for Home Assistant.
  * https://github.com/boas-de-lely/combi-boiler-visual-card#readme
  *
@@ -17,7 +17,7 @@
 
 const CARD_TAG = 'combi-boiler-visual-card';
 const CARD_NAME = 'Combi Boiler Visual Card';
-const CARD_VERSION = '1.2.0';
+const CARD_VERSION = '1.2.1';
 const CARD_REPO = 'https://github.com/boas-de-lely/combi-boiler-visual-card';
 const CARD_DESCRIPTION =
   'Animated combi boiler schematic with live temperatures, flows, pressure and burner states.';
@@ -858,8 +858,34 @@ class CombiBoilerVisualCard extends HTMLElement {
   }
 }
 
-if (!customElements.get(CARD_TAG)) {
+const registeredCard = customElements.get(CARD_TAG);
+if (!registeredCard) {
   customElements.define(CARD_TAG, CombiBoilerVisualCard);
+} else if (registeredCard !== CombiBoilerVisualCard) {
+  // Custom elements cannot be redefined, so upgrade an older copy already registered by another resource.
+  for (const name of Object.getOwnPropertyNames(CombiBoilerVisualCard.prototype)) {
+    if (name !== 'constructor') {
+      Object.defineProperty(
+        registeredCard.prototype,
+        name,
+        Object.getOwnPropertyDescriptor(CombiBoilerVisualCard.prototype, name)
+      );
+    }
+  }
+
+  Object.defineProperties(registeredCard, {
+    getConfigElement: { value: undefined, configurable: true },
+    getConfigForm: {
+      value: CombiBoilerVisualCard.getConfigForm,
+      configurable: true,
+    },
+    getStubConfig: {
+      value: CombiBoilerVisualCard.getStubConfig,
+      configurable: true,
+    },
+  });
+
+  console.info(`[${CARD_TAG}] Updated the already-registered card to v${CARD_VERSION}.`);
 }
 
 window.customCards = window.customCards || [];
