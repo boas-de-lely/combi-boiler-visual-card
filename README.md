@@ -3,7 +3,7 @@
 An animated, dependency-free Lovelace card that draws a combi boiler installation and
 animates it with live Home Assistant data.
 
-![Combi Boiler Visual Card](docs/Schermafbeelding 2026-11-02 210633.png)
+![Combi Boiler Visual Card](docs/Schermafbeelding%202026-11-02%20210633.png)
 
 The card was originally written as a single `custom:button-card` template
 (see [`boiler kaart.yaml`](boiler%20kaart.yaml)) and is now available as a standalone
